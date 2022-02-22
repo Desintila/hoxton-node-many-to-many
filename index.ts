@@ -36,6 +36,14 @@ const getInterviewerById = db.prepare(`SELECT * FROM interviewers WHERE id=?;`)
 
 const getInterviewById = db.prepare(`SELECT * FROM interviews WHERE id=?;`)
 
+const deleteApplicant = db.prepare(`DELETE FROM applicants WHERE id=?;`)
+
+const deleteInterviewer = db.prepare(`DELETE FROM interviewers WHERE id=?;`)
+
+const deleteInterviewByApplicantId = db.prepare(`DELETE FROM interviews WHERE applicantId=?;`)
+
+const deleteInterviewByInterviewerId = db.prepare(`DELETE FROM interviews WHERE interviewerId=?;`)
+
 app.get('/applicants', (req, res) => {
 
     const applicants = getAllApplicants.all()
@@ -48,6 +56,24 @@ app.get('/applicants', (req, res) => {
     res.send(applicants)
 })
 
+
+app.get('/applicants/:id', (req, res) => {
+    const id = req.params.id
+    const applicant = getApplicantById.get(id)
+
+    if (applicant) {
+
+        const interviewers = getInterviewersForApplicant.all(applicant.id)
+        applicant.interviews = interviewers
+
+        res.send(applicant)
+    }
+    else {
+        res.status(404).send({ error: 'Applicant not found' })
+    }
+})
+
+
 app.get('/interviewers', (req, res) => {
 
     const interviewers = getAllInterviewers.all()
@@ -58,6 +84,21 @@ app.get('/interviewers', (req, res) => {
     }
 
     res.send(interviewers)
+})
+
+app.get('/interviewers/:id', (req, res) => {
+    const id = req.params.id
+    const interviewer = getInterviewerById.get(id)
+
+    if (interviewer) {
+        const applicants = getApplicantsForInterviewer.all(interviewer.id)
+        interviewer.applicants = applicants
+
+        res.send(interviewer)
+    }
+    else {
+        res.status(404).send({ error: 'Interviewer not found' })
+    }
 })
 
 
@@ -137,5 +178,39 @@ app.post('/interviews', (req, res) => {
         res.status(400).send({ error: errors })
     }
 })
+
+
+
+app.delete('/applicants/:id', (req, res) => {
+    const id = req.params.id
+
+    deleteInterviewByApplicantId.run(id)
+
+    const result = deleteApplicant.run(id)
+
+    if (result.changes !== 0) {
+        res.send('Applicant deleted')
+    }
+    else {
+        res.status(404).send({ error: 'Applicant not found' })
+    }
+})
+
+
+app.delete('/interviewers/:id', (req, res) => {
+    const id = req.params.id
+
+    deleteInterviewByInterviewerId.run(id)
+
+    const result = deleteInterviewer.run(id)
+
+    if (result.changes !== 0) {
+        res.send('Interviewer deleted')
+    }
+    else {
+        res.status(404).send({ error: 'Interviewer not found' })
+    }
+})
+
 
 app.listen(4000)
